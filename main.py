@@ -2,29 +2,25 @@ from flask import Flask, request, json, jsonify
 
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, AutoConfig
+
 import numpy as np
 from scipy.special import softmax
-
 
 app = Flask(__name__)
 app.config['CORS_HEADERS'] = '*'
 
-@app.before_first_request
-def load_models():
-    global LANG_DETECTOR_MODEL, LANG_DETECT_TOKENIZER
-    LANG_DETECT_TOKENIZER = AutoTokenizer.from_pretrained("eleldar/language-detection")
-    LANG_DETECTOR_MODEL = AutoModelForSequenceClassification.from_pretrained("eleldar/language-detection")
+# print("\n\n\nBEFORE FIRST REQUEST")
+LANG_DETECT_TOKENIZER = AutoTokenizer.from_pretrained("models/language-detection")
+LANG_DETECTOR_MODEL = AutoModelForSequenceClassification.from_pretrained("models/language-detection")
 
-    global SENTIMENT_TOKENIZER, SENTIMENT_CONFIG, SENTIMENT_MODEL
-    SENTIMENT_TOKENIZER = AutoTokenizer.from_pretrained("cardiffnlp/twitter-roberta-base-sentiment-latest")
-    SENTIMENT_CONFIG = AutoConfig.from_pretrained("cardiffnlp/twitter-roberta-base-sentiment-latest")
-    SENTIMENT_MODEL = AutoModelForSequenceClassification.from_pretrained("cardiffnlp/twitter-roberta-base-sentiment-latest")
-        
+SENTIMENT_TOKENIZER = AutoTokenizer.from_pretrained("models/sentiment-classification")
+SENTIMENT_CONFIG = AutoConfig.from_pretrained("models/sentiment-classification")
+SENTIMENT_MODEL = AutoModelForSequenceClassification.from_pretrained("models/sentiment-classification")
+# print("\n\n\nFINISHED LOADING MODELS")
+
 
 @app.route('/api/language-detection', methods=['POST'])
 def detect_eng():
-    global LANG_DETECTOR_MODEL, LANG_DETECT_TOKENIZER
-
     tweet = json.loads(request.data)
     tweet_text = tweet["tweet_text"]
 
@@ -40,7 +36,6 @@ def detect_eng():
 
 @app.route('/api/sentiment-score', methods=['POST'])
 def sentiment_score():
-    global SENTIMENT_TOKENIZER, SENTIMENT_CONFIG, SENTIMENT_MODEL
     # Preprocess text (username and link placeholders)
     def preprocess(text):
         new_text = []
@@ -73,6 +68,9 @@ def sentiment_score():
     
     return result
 
+@app.route('/')
+def root():
+    return "Hello world"
 
 if __name__ == '__main__':
     port = 5351  # custom port
