@@ -21,18 +21,20 @@ SENTIMENT_MODEL = AutoModelForSequenceClassification.from_pretrained("models/sen
 
 @app.route('/api/language-detection', methods=['POST'])
 def detect_eng():
-    tweet = json.loads(request.data)
-    tweet_text = tweet["tweet_text"]
+    tweets = json.loads(request.data)
+    tweet_texts = [tweet["tweet_text"] for tweet in tweets]
 
-    inputs = LANG_DETECT_TOKENIZER(tweet_text, return_tensors="pt")
+    langs = []
+    for text in tweet_texts:
+        inputs = LANG_DETECT_TOKENIZER(text, return_tensors="pt")
 
-    with torch.no_grad():
-        logits = LANG_DETECTOR_MODEL(**inputs).logits
+        with torch.no_grad():
+            logits = LANG_DETECTOR_MODEL(**inputs).logits
 
-    predicted_class_id = logits.argmax().item()
-    lang = LANG_DETECTOR_MODEL.config.id2label[predicted_class_id]
+        predicted_class_id = logits.argmax().item()
+        langs.append(LANG_DETECTOR_MODEL.config.id2label[predicted_class_id])
 
-    return jsonify({"tweet_text": tweet_text, "is_english": True if lang=='en' else False})
+    return jsonify([{"tweet_text": tweet_text, "is_english": True if lang=='en' else False} for lang, tweet_text in zip(langs, tweet_texts)])
 
 @app.route('/api/sentiment-score', methods=['POST'])
 def sentiment_score():
@@ -45,28 +47,31 @@ def sentiment_score():
             new_text.append(t)
         return " ".join(new_text)
 
-    tweet = json.loads(request.data)
-    tweet_text = tweet["tweet_text"]
-    text = preprocess(tweet_text)
-
-    encoded_input = SENTIMENT_TOKENIZER(text, return_tensors='pt')
-    output = SENTIMENT_MODEL(**encoded_input)
-    scores = output[0][0].detach().numpy()
-    scores = softmax(scores)
-
-    ranking = np.argsort(scores)
-    ranking = ranking[::-1]
-
-    result = jsonify({
-        "tweet_text": tweet_text,
-        "sentiment_score": {
-            "positive": float(scores[2]),
-            "neutral": float(scores[1]),
-            "negative": float(scores[0]),
-        },
-        "detected_mood": SENTIMENT_CONFIG.id2label[ranking[0]].upper()})
+    tweets = json.loads(request.data)
+    tweet_texts = [tweet["tweet_text"] for tweet in tweets]
+    results = []
     
-    return result
+    for tweet_text in tweet_texts:
+        text = preprocess(tweet_text)
+
+        encoded_input = SENTIMENT_TOKENIZER(text, return_tensors='pt')
+        output = SENTIMENT_MODEL(**encoded_input)
+        scores = output[0][0].detach().numpy()
+        scores = softmax(scores)
+
+        ranking = np.argsort(scores)
+        ranking = ranking[::-1]
+
+        results.append({
+            "tweet_text": tweet_text,
+            "sentiment_score": {
+                "positive": float(scores[2]),
+                "neutral": float(scores[1]),
+                "negative": float(scores[0]),
+            },
+            "detected_mood": SENTIMENT_CONFIG.id2label[ranking[0]].upper()})
+    
+    return jsonify(results)
 
 @app.route('/')
 def root():
