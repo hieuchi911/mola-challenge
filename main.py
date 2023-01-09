@@ -6,8 +6,13 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification, Auto
 import numpy as np
 from scipy.special import softmax
 
+from flask import Flask
+from flask_cors import CORS
+
+
 app = Flask(__name__)
 app.config['CORS_HEADERS'] = '*'
+CORS(app)
 
 # print("\n\n\nBEFORE FIRST REQUEST")
 LANG_DETECT_TOKENIZER = AutoTokenizer.from_pretrained("models/language-detection")
@@ -33,8 +38,12 @@ def detect_eng():
 
         predicted_class_id = logits.argmax().item()
         langs.append(LANG_DETECTOR_MODEL.config.id2label[predicted_class_id])
+    
+    results = jsonify([{"tweet_text": tweet_text, "is_english": True if lang=='en' else False} for lang, tweet_text in zip(langs, tweet_texts)])
+    
+    results.headers.add('Access-Control-Allow-Origin', 'https://twitter.com')
 
-    return jsonify([{"tweet_text": tweet_text, "is_english": True if lang=='en' else False} for lang, tweet_text in zip(langs, tweet_texts)])
+    return results
 
 @app.route('/api/sentiment-score', methods=['POST'])
 def sentiment_score():
@@ -50,7 +59,7 @@ def sentiment_score():
     tweets = json.loads(request.data)
     tweet_texts = [tweet["tweet_text"] for tweet in tweets]
     results = []
-    
+
     for tweet_text in tweet_texts:
         text = preprocess(tweet_text)
 
@@ -71,7 +80,11 @@ def sentiment_score():
             },
             "detected_mood": SENTIMENT_CONFIG.id2label[ranking[0]].upper()})
     
-    return jsonify(results)
+    results = jsonify(results)
+
+    results.headers.add('Access-Control-Allow-Origin', 'https://twitter.com')
+
+    return results
 
 @app.route('/')
 def root():
