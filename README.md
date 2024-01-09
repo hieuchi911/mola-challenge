@@ -1,5 +1,8 @@
 # mola-challenge
 
+Demo link: [here](https://shorturl.at/aFJV8)
+
+
 Models used taken from Huggingface:
 - Sentiment classification: [Twitter-roBERTa-base for Sentiment Analysis](https://huggingface.co/cardiffnlp/twitter-roberta-base-sentiment-latest)
 - Language Detection: [A fine-tuned version of xlm-roberta-base on the Language Identification dataset](https://huggingface.co/eleldar/language-detection)
